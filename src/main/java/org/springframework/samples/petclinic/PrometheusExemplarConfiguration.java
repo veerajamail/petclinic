@@ -1,3 +1,4 @@
+
 package org.springframework.samples.petclinic;
 
 import org.springframework.context.annotation.Bean;
@@ -25,7 +26,7 @@ public class PrometheusExemplarConfiguration {
 						if (!Span.current().getSpanContext().isSampled()) {
 							return null;
 						}
-						
+
 						return super.getTraceId();
 					}
 				}));

@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: /snap/kompose/19/kompose-linux-amd64 --file docker-compose.yml convert
+    kompose.version: 1.21.0 (992df58d8)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: load-generator
+  name: load-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: load-generator
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: /snap/kompose/19/kompose-linux-amd64 --file docker-compose.yml
+          convert
+        kompose.version: 1.21.0 (992df58d8)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: load-generator
+    spec:
+      containers:
+      - args:
+        - /bin/sh
+        - -c
+        - /tmp/load-generator.sh
+        image: curlimages/curl:latest
+        imagePullPolicy: ""
+        name: load-generator
+        resources: {}
+        volumeMounts:
+        - mountPath: /tmp/load-generator.sh
+          name: load-generator-claim0
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes:
+      - name: load-generator-claim0
+        persistentVolumeClaim:
+          claimName: load-generator-claim0
+status: {}

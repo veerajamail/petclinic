@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: /snap/kompose/19/kompose-linux-amd64 --file docker-compose.yml convert
+    kompose.version: 1.21.0 (992df58d8)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: agent
+  name: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: agent
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: /snap/kompose/19/kompose-linux-amd64 --file docker-compose.yml
+          convert
+        kompose.version: 1.21.0 (992df58d8)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: agent
+    spec:
+      containers:
+      - command:
+        - /bin/agent
+        - -config.file=/etc/agent-config/agent.yaml
+        - -metrics.wal-directory=/tmp/agent/wal
+        - -enable-features=integrations-next
+        - -config.expand-env
+        - -config.enable-read-api
+        env:
+        - name: HOSTNAME
+          value: agent
+        - name: LOKI_HOST
+          value: loki:3100
+        - name: TEMPO_HOST
+          value: tempo:3200
+        image: grafana/agent:latest
+        imagePullPolicy: ""
+        name: agent
+        ports:
+        - containerPort: 12345
+        resources: {}
+        volumeMounts:
+        - mountPath: /etc/agent-config/agent.yaml
+          name: agent-claim0
+        - mountPath: /tmp/pet-clinic.log
+          name: agent-claim1
+        - mountPath: /tmp/tomcat_log.log
+          name: agent-claim2
+        - mountPath: /etc/agent
+          name: agent-claim3
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes:
+      - name: agent-claim0
+        persistentVolumeClaim:
+          claimName: agent-claim0
+      - name: agent-claim1
+        persistentVolumeClaim:
+          claimName: agent-claim1
+      - name: agent-claim2
+        persistentVolumeClaim:
+          claimName: agent-claim2
+      - name: agent-claim3
+        persistentVolumeClaim:
+          claimName: agent-claim3
+status: {}
