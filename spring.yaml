@@ -1,0 +1,40 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: spring-petclinic
+  name: spring-petclinic
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: spring-petclinic
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        io.kompose.service: spring-petclinic
+    spec:
+      containers:
+      - name: spring-petclinic
+        image: janajohny/spring-petclinic
+        imagePullPolicy: Always
+        ports:
+         - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    io.kompose.service: spring-petclinic
+  name: spring-petclinic
+spec:
+  ports:
+  - name: spring-petclinic
+    port: 8080
+    targetPort: 8080
+  type: LoadBalancer
+  selector:
+    io.kompose.service: spring-petclinic

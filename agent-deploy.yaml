@@ -1,0 +1,138 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-config
+data:
+  agent.yaml: |
+    server:
+      log_level: info
+
+    metrics:
+      wal_directory: /tmp/agent/wal
+      global:
+        scrape_interval: 15s
+      configs:
+        - name: default
+          scrape_configs: []
+
+    logs:
+      configs:
+        - name: default
+          clients:
+            - url: http://${LOKI_HOST}/loki/api/v1/push
+          positions:
+            filename: /tmp/positions.yaml
+          scrape_configs:
+            - job_name: pet-clinic
+              static_configs:
+                - targets: [localhost]
+                  labels:
+                    job: pet-clinic
+                    __path__: /tmp/pet-clinic.log
+            - job_name: tomcat-log
+              static_configs:
+                - targets: [localhost]
+                  labels:
+                    job: tomcat-log
+                    __path__: /tmp/tomcat_log.log
+
+    traces:
+      configs:
+        - name: default
+          remote_write:
+            - endpoint: http://${TEMPO_HOST}/otlp
+              insecure: true
+          receivers:
+            otlp:
+              protocols:
+                grpc: {}
+                http:
+                  endpoint: "0.0.0.0:4318"
+                  cors:
+                    allowed_origins:
+                      - http://localhost:8080
+                    allowed_headers: ["*"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: /snap/kompose/19/kompose-linux-amd64 --file docker-compose.yml convert
+    kompose.version: 1.21.0 (992df58d8)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: agent
+  name: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: agent
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: /snap/kompose/19/kompose-linux-amd64 --file docker-compose.yml
+          convert
+        kompose.version: 1.21.0 (992df58d8)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: agent
+    spec:
+      containers:
+      - name: agent
+        image: grafana/agent:latest
+        command:
+         - grafana-agent
+        args:
+        - -config.file=/etc/agent-config/agent.yaml
+        - -metrics.wal-directory=/tmp/agent/wal
+        - -enable-features=integrations-next
+        - -config.expand-env
+        - -config.enable-read-api
+        env:
+        - name: HOSTNAME
+          value: agent
+        - name: LOKI_HOST
+          value: loki:3100
+        - name: TEMPO_HOST
+          value: tempo:3200
+        image: grafana/agent:latest
+        imagePullPolicy: ""
+        name: agent
+        ports:
+        - containerPort: 12345
+        resources: {}
+        volumeMounts:
+        - mountPath: /etc/agent-config/agent.yaml
+          name: agent-config
+          subPath: agent.yaml
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes:
+      - name: agent-config
+        configMap:
+          name: agent-config
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: /snap/kompose/19/kompose-linux-amd64 --file docker-compose.yml convert
+    kompose.version: 1.21.0 (992df58d8)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: agent
+  name: agent
+spec:
+  ports:
+  - name: "12345"
+    port: 12345
+    targetPort: 12345
+  selector:
+    io.kompose.service: agent
+status:
+  loadBalancer: {}

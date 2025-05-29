@@ -1,0 +1,187 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-ini-config
+data:
+  grafana.ini: |
+    [feature_toggles]
+    enable = traceToMetrics tempoApmTable tempoSearch tempoBackendSearch tempoServiceGraph
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+data:
+  datasources.yaml: |
+    apiVersion: 1
+
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        orgId: 1
+        url: http://prometheus:9090
+        basicAuth: false
+        isDefault: false
+        version: 1
+        editable: true
+        jsonData:
+          httpMethod: POST
+          exemplarTraceIdDestinations:
+            - datasourceUid: tempo
+              name: trace_id
+
+      - name: TempoPrometheus
+        type: prometheus
+        access: proxy
+        orgId: 1
+        url: http://prometheus:9090
+        basicAuth: false
+        isDefault: false
+        version: 1
+        editable: true
+        jsonData:
+          httpMethod: POST
+          exemplarTraceIdDestinations:
+            - datasourceUid: tempo
+              name: traceID
+
+      - name: Tempo
+        type: tempo
+        access: proxy
+        orgId: 1
+        url: http://tempo:3200
+        basicAuth: false
+        isDefault: true
+        version: 1
+        editable: true
+        apiVersion: 1
+        uid: tempo
+        jsonData:
+          httpMethod: GET
+          tracesToMetrics:
+            datasourceUid: 'Prometheus'
+            tags:
+              - { key: 'service.name', value: 'service' }
+              - { key: 'job' }
+            queries:
+              - name: 'Sample query'
+                query: 'sum(rate(tempo_spanmetrics_latency_bucket{$__tags}[5m]))'
+          tracesToLogs:
+            datasourceUid: 'loki'
+            tags: ['job', 'instance']
+            mappedTags:
+              - { key: 'service.name', value: 'service' }
+            mapTagNamesEnabled: false
+            spanStartTimeShift: '1h'
+            spanEndTimeShift: '1h'
+            filterByTraceID: false
+            filterBySpanID: false
+            lokiSearch: true
+          serviceMap:
+            datasourceUid: 'Prometheus'
+          search:
+            hide: false
+          nodeGraph:
+            enabled: true
+
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki:3100
+        editable: true
+        apiVersion: 1
+        uid: loki
+        jsonData:
+          maxLines: 1000
+          derivedFields:
+            - datasourceUid: tempo
+              matcherRegex: "traceID=(\\w+)"
+              name: TraceID
+              url: '$${__value.raw}'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 10
+        options:
+          path: /etc/grafana/provisioning/dashboards
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:9.1.0
+          ports:
+            - containerPort: 3000
+          env:
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: Admin
+            - name: GF_AUTH_DISABLE_LOGIN_FORM
+              value: "true"
+            - name: GF_USERS_DEFAULT_THEME
+              value: light
+          volumeMounts:
+            - mountPath: /etc/grafana/grafana.ini
+              name: grafana-ini-config
+              subPath: grafana.ini
+            - mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+              name: grafana-datasources
+              subPath: datasources.yaml
+            - mountPath: /etc/grafana/provisioning/dashboard-providers/dashboards.yaml
+              name: grafana-dashboard-provider
+              subPath: dashboards.yaml
+            - mountPath: /etc/grafana/provisioning/dashboards
+              name: grafana-dashboards
+      volumes:
+        - name: grafana-ini-config
+          configMap:
+            name: grafana-ini-config
+        - name: grafana-datasources
+          configMap:
+            name: grafana-datasources
+        - name: grafana-dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+        - name: grafana-dashboards
+          configMap:
+            name: grafana-dashboards
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  selector:
+    app: grafana
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: LoadBalancer
+
