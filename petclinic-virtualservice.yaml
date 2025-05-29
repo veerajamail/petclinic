@@ -1,0 +1,16 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: petclinic
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - petclinic-gateway
+  http:
+  - route:
+    - destination:
+        host: petclinic
+        port:
+          number: 8080
+

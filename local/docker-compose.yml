@@ -95,20 +95,18 @@ services:
       - ./logs/pet-clinic.log:/tmp/pet-clinic.log
       - ./logs/tomcat_log.log:/tmp/tomcat_log.log
       - /tmp/agent:/etc/agent
-    entrypoint:
-      - /bin/agent
-      - -config.file=/etc/agent-config/agent.yaml
-      - -metrics.wal-directory=/tmp/agent/wal
-      - -enable-features=integrations-next
-      - -config.expand-env
-      - -config.enable-read-api
+    command: >
+      -config.file=/etc/agent-config/agent.yaml
+      -metrics.wal-directory=/tmp/agent/wal
+      -enable-features=integrations-next
+      -config.expand-env
+      -config.enable-read-api
     environment:
       HOSTNAME: agent
       LOKI_HOST: loki:3100
       TEMPO_HOST: tempo:3200
     ports:
       - "12345:12345"
-#      - "4318:4318"   # OTLP http receiver
     depends_on:
       - loki
       - tempo
