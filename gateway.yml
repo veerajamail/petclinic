@@ -1,0 +1,16 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: petclinic-gateway
+  namespace: petclinic
+spec:
+  selector:
+    istio: ingressgateway  # Use Istio default ingress gateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "petclinic.example.com"  # Change this to your domain
+

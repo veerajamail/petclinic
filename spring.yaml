@@ -7,6 +7,7 @@ spec:
   selector:
     matchLabels:
       app: spring-petclinic
+      io.kompose.service: spring-petclinic
   template:
     metadata:
       labels:
@@ -55,6 +56,7 @@ metadata:
 spec:
   selector:
     app: spring-petclinic
+    io.kompose.service: spring-petclinic    
   ports:
     - port: 8080
       targetPort: 8080
