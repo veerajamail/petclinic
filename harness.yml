@@ -1,0 +1,59 @@
+pipeline:
+  name: Deploy PetClinic
+  identifier: deploy_petclinic
+  projectIdentifier: jkproject
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: Deploy Stage
+        identifier: deploy_stage
+        type: Deployment
+        spec:
+          service:
+            serviceDefinition:
+              type: Kubernetes
+              spec:
+                manifests:
+                  - manifest:
+                      identifier: petclinic_manifest
+                      type: K8sManifest
+                      spec:
+                        store:
+                          type: Git
+                          spec:
+                            connectorRef: hgc               # Your Git Connector
+                            gitFetchType: Branch
+                            branch: develop
+                            repoName: petclinic             # Your repo name
+                            paths:
+                              - manifests                   # Directory containing deployment.yaml & service.yaml
+                        skipResourceVersioning: false
+            name: petclinic_service
+            identifier: petclinic_service
+          environment:
+            name: dev
+            identifier: dev
+            type: PreProduction
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: k8s_cluster
+                type: KubernetesDirect
+                spec:
+                  connectorRef: hgc        # Your Kubernetes connector
+                  namespace: petclinic
+                  releaseName: petclinic-release
+          execution:
+            steps:
+              - step:
+                  name: Apply K8s Manifests
+                  identifier: apply_manifests
+                  type: K8sApply
+                  timeout: 10m
+                  spec: {}
+              - step:
+                  name: Rolling Deploy
+                  identifier: rolling_deploy
+                  type: K8sRollingDeploy
+                  timeout: 15m
+                  spec: {}
