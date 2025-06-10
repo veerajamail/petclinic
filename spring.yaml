@@ -8,10 +8,13 @@ spec:
     matchLabels:
       app: spring-petclinic
       io.kompose.service: spring-petclinic
+      harness.io/release-name: release-5d4c86
   template:
     metadata:
       labels:
         app: spring-petclinic
+        harness.io/release-name: release-5d4c86
+        io.kompose.service: spring-petclinic
     spec:
       securityContext:
          fsGroup: 0
@@ -56,6 +59,7 @@ metadata:
 spec:
   selector:
     app: spring-petclinic
+    harness.io/release-name: release-5d4c86
     io.kompose.service: spring-petclinic    
   ports:
     - port: 8080
