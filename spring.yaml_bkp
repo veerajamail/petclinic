@@ -1,0 +1,54 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: spring-petclinic
+  name: spring-petclinic
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: spring-petclinic
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        io.kompose.service: spring-petclinic
+    spec:
+      containers:
+      - name: spring-petclinic
+        image: janajohny/spring-petclinic
+        env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: 'opentelemetry-demo-otelcol'
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4317
+          - name: OTEL_RESOURCE_ATTRIBUTES
+            value: service.name=$(OTEL_SERVICE_NAME),service.namespace=default
+        imagePullPolicy: Always
+        ports:
+         - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    io.kompose.service: spring-petclinic
+  name: spring-petclinic
+spec:
+  ports:
+  - name: spring-petclinic
+    port: 8080
+    targetPort: 8080
+  type: LoadBalancer
+  selector:
+    io.kompose.service: spring-petclinic

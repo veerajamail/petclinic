@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-petclinic
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spring-petclinic
+  template:
+    metadata:
+      labels:
+        app: spring-petclinic
+    spec:
+      securityContext:
+         fsGroup: 0
+      initContainers:
+        - name: init-otel-agent
+          image: curlimages/curl:7.85.0
+          securityContext:
+           runAsUser: 0
+           runAsGroup: 0
+          command:
+            - sh
+            - -c
+            - curl -L https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.38.0/opentelemetry-javaagent.jar -o /otel/opentelemetry-javaagent.jar
+          volumeMounts:
+            - name: otel-agent
+              mountPath: /otel
+      containers:
+        - name: spring-petclinic
+          image: janajohny/spring-petclinic
+          args:
+            - "-javaagent:/otel/opentelemetry-javaagent.jar"
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: spring-petclinic
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://opentelemetry-demo-otelcol:4317
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: service.name=spring-petclinic,service.namespace=default
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: otel-agent
+              mountPath: /otel
+      volumes:
+        - name: otel-agent
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-petclinic
+spec:
+  selector:
+    app: spring-petclinic
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: LoadBalancer
+

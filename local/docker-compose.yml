@@ -68,10 +68,11 @@ services:
 
   # The pet-clinic application
   spring-petclinic:
-    image: spring-petclinic:latest
+    image: janajohny/spring-petclinic
     volumes:
       - ./logs/pet-clinic.log:/tmp/pet-clinic.log
       - ./logs/tomcat_log.log:/tmp/tomcat_log.log
+      - ./opentelemetry-javaagent.jar:/opentelemetry-javaagent.jar
     environment:
       JAVA_TOOL_OPTIONS: -javaagent:/opentelemetry-javaagent.jar
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://agent:4317
