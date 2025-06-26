@@ -1,0 +1,8 @@
+environment:
+  name: prod_env
+  identifier: prod_env
+  description: ""
+  tags: {}
+  type: Production
+  orgIdentifier: default
+  projectIdentifier: DEVPOC
