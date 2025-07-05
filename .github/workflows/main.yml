@@ -1,18 +1,133 @@
-name: Petclinic CI/CD
+name: Petclinic CI/CD Template
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      deploy_url:
+        required: false
+        type: string
 
 jobs:
-
   build:
-    name: Build & Sonar
     runs-on: self-hosted
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+
+      - name: Set up Java & Maven
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build & Test
+        run: |
+          mvn clean compile
+          mvn test
+
+      - name: SonarQube Analysis
+        uses: sonarsource/sonarqube-scan-action@v2
+        with:
+          args: >
+            -Dsonar.projectKey=Petclinic
+            -Dsonar.projectName=Petclinic
+            -Dsonar.java.binaries=.
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Wait for Quality Gate
+        uses: sonarsource/sonarqube-quality-gate-action@v1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  security:
+    runs-on: self-hosted
+    needs: build
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@v1.0.0
+        with:
+          project: 'Petclinic'
+          scanPath: '.'
+          format: 'HTML'
+
+      - name: Upload OWASP Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-check-report
+          path: '**/dependency-check-report.html'
+
+      - name: Docker Login
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Docker Build & Push
+        run: |
+          docker build -t petclinic1 .
+          docker tag petclinic1 veerajamail/petclinic1:latest
+          docker push veerajamail/petclinic1:latest
+
+      - name: Trivy Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: sevenajay/petclinic1:latest
+          format: 'table'
+          output: trivy.txt
+
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-report
+          path: trivy.txt
+
+  deploy:
+    runs-on: self-hosted
+    needs: security
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.deploy_url }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy to Kubernetes
+        run: |
+          echo "${{ secrets['KUBECONFIG_' + inputs.environment] }}" > ~/.kube/config
+          kubectl apply -f deployment.yaml
+
+      - name: Run Docker Locally
+        if: ${{ inputs.environment == 'dev' }}
+        run: |
+          docker stop pet1 || true
+          docker rm pet1 || true
+          docker run -d --name pet1 -p 8082:8080 veerajamail/petclinic1:latest
+
+      - name: Deploy to Tomcat (only in prod)
+        if: ${{ inputs.environment == 'prod' }}
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.TOMCAT_HOST }}
+          username: ${{ secrets.TOMCAT_USER }}
+          password: ${{ secrets.TOMCAT_PASSWORD }}
+          source: target/petclinic.war
+          target: /opt/apache-tomcat-9.0.65/webapps/
+
+      - name: Send Notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "Deployment to ${{ inputs.environment }} completed"
+          to: veerajamail@gmail.com
+          from: GitHub Actions <veerajamail@gmail.com>
+          content_type: text/html
+          body: |
+            <p>Deployment to <b>${{ inputs.environment }}</b> completed.</p>
+            <p><a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Run</a></p>
+          attachments: trivy.txt
 
       
