@@ -38,7 +38,7 @@ jobs:
           mvn test
 
       - name: SonarQube Analysis
-        uses: sonarsource/sonarqube-scan-action@v1
+        uses: sonarsource/sonarqube-scan-action@v2
         with:
           args: >
             -Dsonar.projectKey=Petclinic
