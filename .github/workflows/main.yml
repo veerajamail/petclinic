@@ -50,13 +50,14 @@ jobs:
       - name: SonarQube Analysis
         uses: sonarsource/sonarqube-scan-action@v2
         with:
-          args: >
-            -Dsonar.projectKey=Petclinic
-            -Dsonar.projectName=Petclinic
-            -Dsonar.java.binaries=.
+         args: >
+          -Dsonar.projectKey=Petclinic
+          -Dsonar.projectName=Petclinic
+          -Dsonar.java.binaries=.
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: http://loaclhost:9000
+         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+         SONAR_HOST_URL: http://localhost:9000
+          
 
       - name: Wait for Quality Gate
         uses: sonarsource/sonarqube-quality-gate-action@v1
