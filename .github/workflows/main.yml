@@ -56,14 +56,14 @@ jobs:
           -Dsonar.java.binaries=.
         env:
          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-         SONAR_HOST_URL: http://localhost:9000
+         SONAR_HOST_URL: http://192.168.195.128:9000
           
 
       - name: Wait for Quality Gate
         uses: sonarsource/sonarqube-quality-gate-action@v1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: http://localhost:9000
+          SONAR_HOST_URL: http://192.168.195.128:9000
 
   security:
     runs-on: self-hosted
