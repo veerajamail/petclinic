@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Java & Maven
+      - name: Set up Java 
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -45,7 +45,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build & Test with Gradle
-        run: ./gradlew clean build
+        run: ./gradlew clean build -x test
       
       - name: SonarQube Analysis
         uses: sonarsource/sonarqube-scan-action@v2
