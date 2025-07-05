@@ -24,7 +24,7 @@ jobs:
 
       - name: Build & Test
         run: |
-          mvn clean compile
+          mvn clean compile -DskipTests
           mvn test
 
       - name: SonarQube Analysis
